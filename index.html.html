@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>División Ómnibus - Salto</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+    <style>
+        :root { --blue: #1a2a3a; --light-blue: #3498db; --green: #27ae60; --gray: #ecf0f1; }
+        body { font-family: sans-serif; margin: 0; background: #f4f4f4; color: #333; }
+        header { background: var(--blue); color: white; padding: 20px; text-align: center; }
+        
+        /* Contenedor del Logo */
+        .logo-circle { 
+            width: 80px; height: 80px; background: white; border-radius: 50%; 
+            margin: 0 auto 10px; overflow: hidden; display: flex; 
+            align-items: center; justify-content: center; border: 3px solid var(--light-blue);
+        }
+        .logo-circle img { width: 100%; height: 100%; object-fit: cover; }
+
+        .container { max-width: 500px; margin: auto; padding: 15px; }
+        .card { background: white; border-radius: 10px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        
+        button { width: 100%; padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; font-size: 16px; }
+        .btn-main { background: var(--light-blue); color: white; }
+        .btn-ok { background: var(--green); color: white; }
+        
+        input, textarea { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        .hidden { display: none !important; }
+        .item-taller { border-left: 5px solid var(--light-blue); padding-left: 10px; margin-bottom: 10px; border-bottom: 1px solid #eee; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo-circle">
+        <img src="logo.png." onerror="this.src='https://via.placeholder.com/80?text=BUS'">
+    </div>
+    <h1 style="margin:0; font-size: 1.2rem;">División Ómnibus</h1>
+    <small>Sistema de Gestión de Taller</small>
+</header>
+
+<div class="container">
+    
+    <div id="pantalla-inicio">
+        <div class="card" style="text-align:center">
+            <h3>Acceso Personal</h3>
+            <button class="btn-main" onclick="ingresar('conductores')">CONDUCTORES</button>
+            <button class="btn-main" onclick="ingresar('taller')">TALLER</button>
+        </div>
+
+        <div class="card">
+            <h3 style="color:var(--green)">📅 Planilla del Día</h3>
+            <div id="planilla-hoy" style="text-align:center">Cargando...</div>
+        </div>
+
+        <div class="card">
+            <h3 style="color:var(--light-blue)">🛠️ Estado del Taller</h3>
+            <div id="estado-taller">No hay coches reportados.</div>
+        </div>
+    </div>
+
+    <div id="pantalla-privada" class="hidden">
+        <div class="card" id="user-tag" style="background:#d1ecf1; text-align:center; font-weight:bold"></div>
+
+        <div id="panel-conductores" class="hidden">
+            <div class="card">
+                <h4>Reportar Falla</h4>
+                <input type="text" id="f-interno" placeholder="N° Interno">
+                <textarea id="f-problema" placeholder="¿Qué le pasa al coche?"></textarea>
+                <input type="file" id="f-foto" accept="image/*">
+                <button class="btn-main" onclick="enviarFalla()">ENVIAR REPORTE</button>
+            </div>
+            <div class="card">
+                <h4>Actualizar Planilla</h4>
+                <input type="file" id="p-foto" accept="image/*">
+                <button class="btn-ok" onclick="subirPlanilla()">SUBIR PLANILLA</button>
+            </div>
+        </div>
+
+        <div id="panel-taller" class="hidden">
+            <div class="card">
+                <h4>Tareas Pendientes</h4>
+                <div id="lista-tareas"></div>
+            </div>
+        </div>
+
+        <button style="background:#999; color:white" onclick="location.reload()">SALIR / VOLVER</button>
+    </div>
+</div>
+
+<script>
+    // Configuración de Firebase (Realtime Database - Siempre Gratis)
+    const firebaseConfig = {
+        apiKey: "AIzaSyCO2ngrIv3QRdyxgk9USv4sa0b2nPlF8Fw",
+        databaseURL: "https://taller-salto-default-rtdb.firebaseio.com/",
+        projectId: "taller-salto"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let miNombre = "";
+    let miRol = "";
+
+    function ingresar(rol) {
+        if(rol === 'taller' && prompt("Clave Taller:") !== "123456") return;
+        miNombre = prompt("Ingrese su nombre:");
+        if(!miNombre) return;
+        miRol = rol;
+        
+        document.getElementById('pantalla-inicio').classList.add('hidden');
+        document.getElementById('pantalla-privada').classList.remove('hidden');
+        document.getElementById('user-tag').innerText = "👤 " + miNombre.toUpperCase();
+        
+        if(rol === 'conductores') document.getElementById('panel-conductores').classList.remove('hidden');
+        else document.getElementById('panel-taller').classList.remove('hidden');
+    }
+
+    // Función para convertir imagen a texto para la base de datos
+    async function leerImagen(input) {
+        const file = input.files[0];
+        if(!file) return "";
+        return new Promise(resolve => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+        });
+    }
+
+    async function enviarFalla() {
+        const int = document.getElementById('f-interno').value;
+        const prob = document.getElementById('f-problema').value;
+        const foto = await leerImagen(document.getElementById('f-foto'));
+        if(!int) return alert("Falta el interno");
+        
+        db.ref('reparaciones').push({
+            interno: int, problema: prob, foto: foto, 
+            estado: 'Pendiente', autor: miNombre, fecha: new Date().toLocaleString()
+        });
+        alert("Reporte enviado"); location.reload();
+    }
+
+    async function subirPlanilla() {
+        const foto = await leerImagen(document.getElementById('p-foto'));
+        if(!foto) return alert("Seleccione una foto");
+        db.ref('planilla_actual').set({ foto: foto, fecha: new Date().toLocaleString() });
+        alert("Planilla actualizada"); location.reload();
+    }
+
+    // Escuchar cambios en la Base de Datos
+    db.ref('planilla_actual').on('value', s => {
+        const d = s.val();
+        document.getElementById('planilla-hoy').innerHTML = d ? `<img src="${d.foto}" style="width:100%; border-radius:5px">` : "No hay planilla subida.";
+    });
+
+    db.ref('reparaciones').on('value', s => {
+        const d = s.val();
+        const monitorPublico = document.getElementById('estado-taller');
+        const listaTaller = document.getElementById('lista-tareas');
+        monitorPublico.innerHTML = ""; listaTaller.innerHTML = "";
+        
+        if(!d) { monitorPublico.innerText = "Todo en orden."; return; }
+
+        for(let id in d) {
+            const r = d[id];
+            // Si está pendiente, aparece en el monitor público
+            if(r.estado === 'Pendiente') {
+                monitorPublico.innerHTML += `<div>⚠️ <b>Coche ${r.interno}</b>: ${r.problema}</div>`;
+            }
+            // Lista para el personal de taller
+            listaTaller.innerHTML += `
+                <div class="item-taller">
+                    <b>Coche ${r.interno}</b><br>${r.problema}<br>
+                    ${r.foto ? `<img src="${r.foto}" style="width:100%; margin:5px 0">` : ''}
+                    <button class="btn-ok" onclick="db.ref('reparaciones/${id}').update({estado:'Listo'})">MARCAR LISTO</button>
+                </div>`;
+        }
+    });
+</script>
+</body>
+</html>
