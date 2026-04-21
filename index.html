@@ -26,6 +26,7 @@
         .img-preview { width: 100%; border-radius: 8px; margin-top: 10px; border: 1px solid #ddd; }
         .horario-titulo { font-size: 1.6rem; font-weight: 900; color: #000; display: block; margin-bottom: 8px; text-transform: uppercase; }
         .status-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; background: var(--warning); color: white; margin-bottom: 5px; }
+        .btn-map { background: #34495e; margin-top: 5px; font-size: 0.8rem; padding: 8px; }
     </style>
 </head>
 <body>
@@ -83,7 +84,7 @@
                 <input type="text" id="t-interno" placeholder="N° de Coche">
                 <textarea id="t-desc" placeholder="Describa la falla..."></textarea>
                 <input type="file" id="t-foto" accept="image/*" capture="environment">
-                <button class="btn-blue" onclick="enviarConFoto('tareas')">ENVIAR A TALLER</button>
+                <button class="btn-blue" onclick="enviarConFoto('tareas')">REPORTAR ROTURA CON UBICACIÓN</button>
             </div>
             <div class="panel">
                 <h3>📋 Actualizar Planilla</h3>
@@ -94,7 +95,7 @@
                 <h3>🚧 Informar Corte</h3>
                 <textarea id="c-desc" placeholder="Ubicación..."></textarea>
                 <input type="file" id="c-foto" accept="image/*" capture="environment">
-                <button class="btn-blue" onclick="enviarConFoto('cortes')">PUBLICAR CORTE</button>
+                <button class="btn-blue" onclick="enviarConFoto('cortes')">PUBLICAR CORTE CON GPS</button>
             </div>
         </div>
 
@@ -115,6 +116,7 @@
 </div>
 
 <script>
+    // --- CONFIGURACIÓN FIREBASE ---
     const firebaseConfig = {
       apiKey: "AIzaSyCO2ngrIv3QRdyxgk9USv4sa0b2nPlF8Fw",
       databaseURL: "https://taller-salto-default-rtdb.firebaseio.com/",
@@ -124,18 +126,43 @@
     const db = firebase.database();
     const auth = firebase.auth();
 
+    // --- PLUGINS DE CAPACITOR ---
+    const { PushNotifications, Geolocation } = (typeof Capacitor !== 'undefined') ? Capacitor.Plugins : { PushNotifications: null, Geolocation: null };
+
+    const registrarNotificaciones = async () => {
+        if (PushNotifications) {
+            let perm = await PushNotifications.requestPermissions();
+            if (perm.receive === 'granted') {
+                await PushNotifications.register();
+            }
+            PushNotifications.addListener('pushNotificationReceived', (notification) => {
+                alert("AVISO IMPORTANTE:\n" + notification.title + "\n" + notification.body);
+            });
+        }
+    };
+    registrarNotificaciones();
+
+    // Función para obtener GPS
+    async function obtenerCoordenadas() {
+        if (!Geolocation) return null;
+        try {
+            const coordinates = await Geolocation.getCurrentPosition();
+            return `https://www.google.com/maps?q=${coordinates.coords.latitude},${coordinates.coords.longitude}`;
+        } catch (e) {
+            console.error("Error GPS:", e);
+            return null;
+        }
+    }
+
     // --- AUTENTICACIÓN ---
     function login() {
         const email = document.getElementById('loginEmail').value;
         const pass = document.getElementById('loginPass').value;
-        auth.signInWithEmailAndPassword(email, pass)
-            .catch(error => alert("Error: " + error.message));
+        auth.signInWithEmailAndPassword(email, pass).catch(error => alert("Error: " + error.message));
     }
 
     function cerrarSesion() {
-        auth.signOut().then(() => {
-            location.reload();
-        });
+        auth.signOut().then(() => { location.reload(); });
     }
 
     auth.onAuthStateChanged(user => {
@@ -154,9 +181,7 @@
     // --- NAVEGACIÓN ---
     function mostrarSeccion(id) {
         const ids = ['pantallaBienvenida', 'seccionHorarios', 'sec-acciones', 'informacionPublica'];
-        ids.forEach(sec => {
-            if(document.getElementById(sec)) document.getElementById(sec).classList.add('hidden');
-        });
+        ids.forEach(sec => { if(document.getElementById(sec)) document.getElementById(sec).classList.add('hidden'); });
         document.getElementById(id).classList.remove('hidden');
         if(id === 'pantallaBienvenida') document.getElementById('informacionPublica').classList.remove('hidden');
     }
@@ -165,7 +190,6 @@
         mostrarSeccion('sec-acciones');
         document.getElementById('menuConductores').classList.add('hidden');
         document.getElementById('menuTaller').classList.add('hidden');
-        
         if(rol === 'taller') {
             const pass = prompt("Clave de Taller:");
             if(pass !== "123456") return mostrarSeccion('pantallaBienvenida');
@@ -175,7 +199,7 @@
         }
     }
 
-    // --- COMPRESIÓN DE IMAGEN (OPTIMIZADA) ---
+    // --- COMPRESIÓN DE IMAGEN ---
     async function comprimirImagen(file) {
         return new Promise((resolve) => {
             const reader = new FileReader();
@@ -185,17 +209,14 @@
                 img.src = e.target.result;
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
-                    const MAX_SIZE = 800; // Reducido para mayor velocidad
+                    const MAX_SIZE = 800; 
                     let width = img.width; let height = img.height;
-                    if (width > height) {
-                        if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
-                    } else {
-                        if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
-                    }
+                    if (width > height) { if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; } } 
+                    else { if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; } }
                     canvas.width = width; canvas.height = height;
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, width, height);
-                    resolve(canvas.toDataURL('image/jpeg', 0.6)); // Calidad 0.6 para ahorrar datos
+                    resolve(canvas.toDataURL('image/jpeg', 0.6)); 
                 };
             };
         });
@@ -208,16 +229,24 @@
         let fID = inputManual || (nodo==='tareas' ? 't-foto' : (nodo==='cortes' ? 'c-foto' : 'p-foto-cond'));
         let file = document.getElementById(fID).files[0];
 
-        if(nodo === 'tareas') { datos.interno = document.getElementById('t-interno').value; datos.desc = document.getElementById('t-desc').value; datos.estado = 'Pendiente'; }
-        if(nodo === 'cortes') { datos.desc = document.getElementById('c-desc').value; }
+        if(nodo === 'tareas') { 
+            datos.interno = document.getElementById('t-interno').value; 
+            datos.desc = document.getElementById('t-desc').value; 
+            datos.estado = 'Pendiente';
+            datos.mapa = await obtenerCoordenadas(); // Captura GPS
+        }
+        if(nodo === 'cortes') { 
+            datos.desc = document.getElementById('c-desc').value; 
+            datos.mapa = await obtenerCoordenadas(); // Captura GPS
+        }
         
         if(file) {
-            alert("Comprimiendo foto...");
+            alert("Comprimiendo foto y capturando ubicación...");
             datos.foto = await comprimirImagen(file);
         }
         
         if(nodo === 'planillas') db.ref(nodo).set(datos); else db.ref(nodo).push(datos);
-        alert("Enviado con éxito");
+        alert("Enviado con éxito. ¡Gracias por el reporte!");
         location.reload();
     }
 
@@ -228,25 +257,16 @@
         const foto = await comprimirImagen(file);
         db.ref('horarios').push({ titulo: titulo, foto: foto });
         alert("Horario publicado");
-        document.getElementById('h-titulo').value = "";
     }
 
-    function borrarHorario(id) {
-        if(prompt("Clave Taller:") === "123456") {
-            db.ref('horarios/' + id).remove();
-        }
-    }
+    function borrarHorario(id) { if(prompt("Clave Taller:") === "123456") db.ref('horarios/' + id).remove(); }
 
-    // --- ESCUCHA DE DATOS (REALTIME) ---
+    // --- ESCUCHA DE DATOS ---
     db.ref('horarios').on('value', s => {
         const d = s.val(); const div = document.getElementById('contenedorHorarios'); div.innerHTML = "";
         if(!d) return div.innerHTML = "No hay horarios.";
         for(let id in d) {
-            div.innerHTML += `<div class="card">
-                <span class="horario-titulo">${d[id].titulo}</span>
-                <img src="${d[id].foto}" class="img-preview">
-                <button class="btn-red" style="width:auto; margin-top:10px" onclick="borrarHorario('${id}')">BORRAR</button>
-            </div>`;
+            div.innerHTML += `<div class="card"><span class="horario-titulo">${d[id].titulo}</span><img src="${d[id].foto}" class="img-preview"><button class="btn-red" onclick="borrarHorario('${id}')">BORRAR</button></div>`;
         }
     });
 
@@ -260,7 +280,9 @@
         for(let id in d) {
             div.innerHTML += `<div class="card" style="border-left-color:red">
                 <button onclick="if(prompt('Clave:')=='123456') db.ref('cortes/${id}').remove()" style="float:right; background:none; color:red; border:none; font-size:20px">×</button>
-                ${d[id].desc} ${d[id].foto ? `<img src="${d[id].foto}" class="img-preview">` : ''}
+                ${d[id].desc} 
+                ${d[id].mapa ? `<br><a href="${d[id].mapa}" target="_blank" class="button btn-blue btn-map">📍 VER UBICACIÓN DEL CORTE</a>` : ''}
+                ${d[id].foto ? `<img src="${d[id].foto}" class="img-preview">` : ''}
             </div>`;
         }
     });
@@ -272,13 +294,14 @@
         for(let id in d) {
             const t = d[id];
             if(t.estado !== 'Listo') {
-                mon.innerHTML += `<div style="padding:10px; border-bottom:1px solid #eee;"><span class="status-badge">TALLER</span> <b>Coche ${t.interno}</b></div>`;
+                mon.innerHTML += `<div style="padding:10px; border-bottom:1px solid #eee;"><span class="status-badge">TALLER</span> <b>Coche ${t.interno}</b>: ${t.desc}</div>`;
             }
             tall.innerHTML += `<div class="card">
                 <b>Interno: ${t.interno}</b><br>${t.desc}<br>
+                ${t.mapa ? `<a href="${t.mapa}" target="_blank" class="button btn-blue btn-map">📍 VER DONDE QUEDÓ EL COCHE</a><br>` : ''}
                 ${t.foto ? `<img src="${t.foto}" class="img-preview">` : ''}
                 <button class="btn-green" onclick="db.ref('tareas/${id}').update({estado:'Listo'})">LISTO</button>
-                <button class="btn-red" style="width:auto" onclick="if(prompt('Clave:')=='123456') db.ref('tareas/${id}').remove()">ELIMINAR</button>
+                <button class="btn-red" onclick="if(prompt('Clave:')=='123456') db.ref('tareas/${id}').remove()">ELIMINAR</button>
             </div>`;
         }
     });
