@@ -52,45 +52,46 @@
 
     <div id="informacionPublica" class="hidden">
         <div class="panel" style="border: 3px solid var(--danger); background: #fff5f5;">
-            <h3 style="color: var(--danger);">🆘 Reporte rotura en calle con GPS</h3>
+            <h3 style="color: var(--danger);">🆘 REPORTAR COCHE ROTO</h3>
             <input type="text" id="aux-interno" placeholder="LINEA">
             <input type="text" id="aux-nombre" placeholder="TURNO">
-            <textarea id="aux-desc" placeholder="¿Qué rotura tiene?"></textarea>
+            <textarea id="aux-desc" placeholder="¿Describa lo que paso?"></textarea>
             <input type="file" id="aux-foto" accept="image/*" capture="environment">
-            <button class="btn-red" onclick="enviarEmergencia()">ENVIAR AUXILIO CON GPS</button>
+            <button class="btn-red" onclick="enviarEmergencia()">Solicitar auxilio mecanico en mi ubicacion</button>
         </div>
 
         <div id="monitorAuxilios"></div>
 
         <div class="panel" style="border: 2px solid var(--success);">
-            <h3>📅 Planilla de Turnos</h3>
+            <h3>📅PLANILLA DE TURNOS </h3>
             <div id="verPlanillaHoy">Cargando...</div>
         </div>
 
         <div class="panel" style="border-left: 8px solid var(--warning);">
-            <h3>🛠️ Coches en Taller</h3>
+            <h3>🛠️ PIZARRA DE ANOTACIONES</h3>
             <div id="monitorTallerPublico">No hay reportes.</div>
         </div>
 
         <div class="panel">
-            <h3>⚠️ Cortes y Desvíos</h3>
+            <h3>⚠️CORTES Y DESVIOS DE CALLES VIGENTES</h3>
             <div id="listaCortes"></div>
         </div>
 
         <div class="panel" style="border: 2px solid #27ae60;">
             <h3>📞 LLAMADAS DE EMERGENCIA</h3>
-            <a href="tel:911" class="btn-call" style="background:#e74c3c">📞 POLICÍA (911)</a>
-            <a href="tel:104" class="btn-call" style="background:#f39c12">🔥 BOMBEROS (104)</a>
-            <a href="tel:1998" class="btn-call" style="background:#2c3e50">🛡️ SEGURO (B.S.E.)</a>
+            <a href="tel:911" class="btn-call" style="background:#e74c3c">📞 POLICÍA 911</a>
+            <a href="tel:104" class="btn-call" style="background:#f39c12">🔥 BOMBEROS 104</a>
+            <a href="tel:1998" class="btn-call" style="background:#2c3e50">🛡️ SEGURO B.S.E.</a>
+            <a href="tel: 47332715" class="btn-call" style="background:#2c3e50">TALLER</a>
         </div>
     </div>
 
     <div id="sec-acciones" class="hidden">
         <div id="menuConductores" class="hidden">
             <div class="panel">
-                <h3>🛠️ Reportar Falla al Taller</h3>
-                <input type="text" id="t-interno" placeholder="Interno">
-                <textarea id="t-desc" placeholder="Falla técnica"></textarea>
+                <h3>🛠️ SOLICITAR REPARACION A EL TALLER</h3>
+                <input type="text" id="t-interno" placeholder="COCHE">
+                <textarea id="t-desc" placeholder="DESCRIBA"></textarea>
                 <input type="file" id="t-foto" accept="image/*" capture="environment">
                 <div style="display: flex; gap: 8px;">
                     <button class="btn-blue" onclick="enviarConFoto('tareas', null, false)" style="flex:1">REPORTE NORMAL</button>
@@ -98,13 +99,13 @@
                 </div>
             </div>
             <div class="panel" style="border: 2px solid var(--warning);">
-                <h3>🚧 Informar Corte</h3>
+                <h3>🚧INFORMAR CORTE DE CALLE PARA TODOS</h3>
                 <textarea id="c-desc" placeholder="Lugar"></textarea>
                 <input type="file" id="c-foto" accept="image/*" capture="environment">
-                <button class="btn-blue" onclick="enviarConFoto('cortes', null, true)">PUBLICAR CON GPS</button>
+                <button class="btn-blue" onclick="enviarConFoto('cortes', null, true)">PUBLICAR CON IMAGEN DE MAPA</button>
             </div>
             <div class="panel">
-                <h3>📋 Subir Planilla</h3>
+                <h3>📋COLABORE SUBIENDO LA PLANILLA DIARIA</h3>
                 <input type="file" id="p-foto-cond" accept="image/*" capture="environment">
                 <button class="btn-green" onclick="enviarConFoto('planillas', 'p-foto-cond')">SUBIR FOTO</button>
             </div>
@@ -115,9 +116,9 @@
                 <h3>⚙️ Administrar Horarios</h3>
                 <input type="text" id="h-titulo" placeholder="Título">
                 <input type="file" id="h-foto" accept="image/*">
-                <button class="btn-green" onclick="actualizarHorario()">PUBLICA</button>
+                <button class="btn-green" onclick="actualizarHorario()">SUBIR HORARIO</button>
             </div>
-            <h3>🔧 Tareas y Auxilios Pendientes</h3>
+            <h3>🔧 PIZARRON PARA EL TALLER</h3>
             <div id="tareasTaller"></div>
         </div>
         <button class="btn-gray" onclick="mostrarSeccion('pantallaBienvenida')">VOLVER AL MENÚ</button>
