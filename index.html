@@ -57,7 +57,7 @@
             <input type="text" id="aux-nombre" placeholder="TURNO">
             <textarea id="aux-desc" placeholder="¿Describa lo que paso?"></textarea>
             <input type="file" id="aux-foto" accept="image/*" capture="environment">
-            <button class="btn-red" onclick="enviarEmergencia()">Solicitar auxilio mecanico en mi ubicacion</button>
+            <button class="btn-red" onclick="enviarEmergencia()">Auxilio mecanico en mi ubicacion</button>
         </div>
 
         <div id="monitorAuxilios"></div>
@@ -77,12 +77,24 @@
             <div id="listaCortes"></div>
         </div>
 
+        <div class="panel" style="border: 4px solid #2c3e50; min-height: 300px;">
+            <h2 style="background: #2c3e50; color: white; padding: 15px; margin: -20px -20px 20px -20px; border-radius: 10px 10px 0 0; text-align: center;">📢 COMUNICADOS</h2>
+            
+            <div style="background: #fcf3cf; padding: 15px; border-radius: 8px; border: 1px solid #f39c12; margin-bottom: 20px;">
+                <textarea id="com-texto-main" style="height: 120px; font-size: 1.1rem;" placeholder="Escriba aquí el nuevo comunicado para todos..."></textarea>
+                <button class="btn-blue" style="background: #2c3e50;" onclick="publicarComunicado()">PUBLICAR EN LA PIZARRA</button>
+            </div>
+
+            <div id="listaComunicados">
+                </div>
+        </div>
+
         <div class="panel" style="border: 2px solid #27ae60;">
             <h3>📞 LLAMADAS DE EMERGENCIA</h3>
             <a href="tel:911" class="btn-call" style="background:#e74c3c">📞 POLICÍA 911</a>
             <a href="tel:104" class="btn-call" style="background:#f39c12">🔥 BOMBEROS 104</a>
             <a href="tel:1998" class="btn-call" style="background:#2c3e50">🛡️ SEGURO B.S.E.</a>
-            <a href="tel: 47332715" class="btn-call" style="background:#2c3e50">TALLER</a>
+            <a href="tel:47332715" class="btn-call" style="background:#2c3e50">TALLER</a>
         </div>
     </div>
 
@@ -185,6 +197,44 @@
         });
     }
 
+    // --- FUNCION PARA PUBLICAR COMUNICADOS ---
+    function publicarComunicado() {
+        const txt = document.getElementById('com-texto-main').value;
+        const user = auth.currentUser;
+        if(!txt) return alert("Escriba un mensaje");
+        
+        db.ref('comunicados').push({
+            mensaje: txt,
+            autor: user ? user.email : "Desconocido",
+            fecha: new Date().toLocaleDateString(),
+            hora: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+        });
+        document.getElementById('com-texto-main').value = "";
+        alert("Publicado en la pizarra");
+    }
+
+    // --- CARGA DE COMUNICADOS EN LA PIZARRA ---
+    db.ref('comunicados').on('value', s => {
+        const d = s.val(); const div = document.getElementById('listaComunicados'); div.innerHTML = "";
+        if(!d) { div.innerHTML = "<p style='text-align:center; color:gray;'>No hay comunicados activos.</p>"; return; }
+        
+        // Mostrar los más nuevos arriba
+        const keys = Object.keys(d).reverse();
+        keys.forEach(id => {
+            div.innerHTML += `
+            <div style="border: 2px solid #eee; border-left: 8px solid #2c3e50; padding: 15px; margin-bottom: 15px; background: #fff; border-radius: 8px;">
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 10px;">
+                    <b style="font-size: 0.8rem; color: #2c3e50;">👤 ${d[id].autor}</b>
+                    <small style="color: #666;">${d[id].fecha} - ${d[id].hora}</small>
+                </div>
+                <p style="font-size: 1.2rem; color: black; font-weight: bold; margin: 0; line-height: 1.4;">${d[id].mensaje}</p>
+                <div style="text-align: right; margin-top: 10px;">
+                    <button style="width: auto; padding: 5px 10px; background: none; color: red; font-size: 0.8rem;" onclick="if(prompt('Clave de borrado:')=='6677') db.ref('comunicados/${id}').remove()">[Borrar x]</button>
+                </div>
+            </div>`;
+        });
+    });
+
     async function enviarEmergencia() {
         const int = document.getElementById('aux-interno').value;
         const nom = document.getElementById('aux-nombre').value;
@@ -218,7 +268,6 @@
         alert("Subido");
     }
 
-    // CARGA DE DATOS
     db.ref('auxilios').on('value', s => {
         const d = s.val(); const div = document.getElementById('monitorAuxilios'); div.innerHTML = "";
         for(let id in d) {
