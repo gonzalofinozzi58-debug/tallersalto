@@ -32,7 +32,7 @@
 
 <header>
     <h1 style="margin:0; font-size: 1.6rem;">División Ómnibus</h1>
-    <small>App No Oficial - Salto</small>
+    <small>App Oficial de Gestión - Salto</small>
 </header>
 
 <div class="container">
@@ -85,6 +85,15 @@
         <div class="panel">
             <h3>⚠️ Cortes y Desvíos</h3>
             <div id="listaCortes">Cargando...</div>
+        </div>
+
+        <div class="panel" style="border: 2px solid #000;">
+            <h3 style="text-align: center;">🚨 EMERGENCIA / SINIESTROS</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <a href="tel:911" style="background: #000; color: white; text-decoration: none; padding: 15px; text-align: center; border-radius: 6px; font-weight: bold;">LLAMAR 911</a>
+                <a href="tel:104" style="background: #000; color: white; text-decoration: none; padding: 15px; text-align: center; border-radius: 6px; font-weight: bold;">LLAMAR 104</a>
+            </div>
+            <a href="tel:1998" style="background: #000; color: white; text-decoration: none; padding: 15px; text-align: center; border-radius: 6px; font-weight: bold; display: block; margin-top: 10px;">LLAMAR 1998 (SEGURO)</a>
         </div>
     </div>
 
@@ -153,9 +162,7 @@
     }
 
     function login() {
-        const e = document.getElementById('loginEmail').value;
-        const p = document.getElementById('loginPass').value;
-        auth.signInWithEmailAndPassword(e, p).catch(err => alert(err.message));
+        auth.signInWithEmailAndPassword(document.getElementById('loginEmail').value, document.getElementById('loginPass').value).catch(err => alert(err.message));
     }
     function cerrarSesion() { auth.signOut().then(() => location.reload()); }
 
@@ -207,39 +214,30 @@
         });
     }
 
-    // ENVIO AUXILIO EMERGENCIA (AFUERA)
     async function enviarAuxilio() {
         const int = document.getElementById('aux-interno').value;
         const lin = document.getElementById('aux-linea').value;
         const cho = document.getElementById('aux-chofer').value;
         const des = document.getElementById('aux-desc').value;
         const file = document.getElementById('aux-foto').files[0];
-
-        if(!int || !lin || !cho || !des) return alert("Completa todos los campos de emergencia.");
-
-        alert("Capturando ubicación exacta...");
+        if(!int || !lin || !cho || !des) return alert("Completa todos los campos.");
+        alert("Obteniendo GPS...");
         let gps = await obtenerCoordenadas();
-        if(!gps) return alert("Error GPS. Asegúrate de tener la ubicación activada.");
-
         let foto = file ? await comprimirImagen(file) : null;
-
         db.ref('auxilios').push({
             interno: int, linea: lin, chofer: cho, desc: des, 
-            mapa: gps, foto: foto, fecha: new Date().toLocaleString(), estado: 'URGENTE'
+            mapa: gps, foto: foto, fecha: new Date().toLocaleString()
         });
-        alert("¡AUXILIO ENVIADO! El taller ya tiene tu ubicación.");
+        alert("¡AUXILIO ENVIADO!");
         location.reload();
     }
 
-    // ENVIO CONDUCTORES
     async function enviarConFoto(nodo, customID, usarGPS = true) {
         const user = auth.currentUser;
         let datos = { autor: user.email, fecha: new Date().toLocaleString() };
         let fID = customID || (nodo==='tareas' ? 't-foto' : 'c-foto');
         let file = document.getElementById(fID).files[0];
-
-        if(usarGPS) { alert("Capturando GPS..."); datos.mapa = await obtenerCoordenadas(); }
-
+        if(usarGPS) { alert("Buscando GPS..."); datos.mapa = await obtenerCoordenadas(); }
         if(nodo === 'tareas') {
             datos.interno = document.getElementById('t-interno').value;
             datos.desc = document.getElementById('t-desc').value;
@@ -247,12 +245,8 @@
         } else if(nodo === 'cortes') {
             datos.desc = document.getElementById('c-desc').value;
         }
-
         if(file) datos.foto = await comprimirImagen(file);
-        
-        if(nodo === 'planillas') db.ref(nodo).set(datos); 
-        else db.ref(nodo).push(datos);
-        
+        if(nodo === 'planillas') db.ref(nodo).set(datos); else db.ref(nodo).push(datos);
         alert("Enviado.");
         location.reload();
     }
@@ -265,7 +259,6 @@
         alert("Subido.");
     }
 
-    // NOTIFICACIÓN DE CORTES
     let inicializado = false;
     db.ref('cortes').limitToLast(1).on('child_added', s => {
         if(!inicializado) { inicializado = true; return; }
@@ -280,7 +273,7 @@
                 <b style="color:red; font-size:1.2rem;">🆘 AUXILIO: COCHE ${d[id].interno}</b><br>
                 <b>Línea:</b> ${d[id].linea} | <b>Chofer:</b> ${d[id].chofer}<br>
                 <b>Falla:</b> ${d[id].desc}<br>
-                <a href="${d[id].mapa}" target="_blank" class="btn-map" style="background:red">📍 IR AL COCHE (MAPA)</a>
+                ${d[id].mapa ? `<a href="${d[id].mapa}" target="_blank" class="btn-map" style="background:red">📍 VER EN MAPA</a>` : ''}
                 ${d[id].foto ? `<img src="${d[id].foto}" class="img-preview">` : ''}
                 <small>${d[id].fecha}</small>
             </div>`;
@@ -301,7 +294,7 @@
         for(let id in d) div.innerHTML += `<div class="card" style="border-left-color:var(--warning)">
             <span class="fecha-resaltada">📅 ${d[id].fecha}</span>
             <b>Detalle:</b> ${d[id].desc}
-            ${d[id].mapa ? `<a href="${d[id].mapa}" target="_blank" class="btn-map">📍 VER UBICACIÓN</a>` : ''}
+            ${d[id].mapa ? `<a href="${d[id].mapa}" target="_blank" class="btn-map">📍 VER MAPA</a>` : ''}
             ${d[id].foto ? `<img src="${d[id].foto}" class="img-preview">` : ''}
             <button style="color:red; background:none; border:none; margin-top:10px" onclick="if(prompt('Clave:')=='6677') db.ref('cortes/${id}').remove()">Eliminar X</button>
         </div>`;
@@ -314,7 +307,6 @@
             if(t.estado !== 'Listo') mon.innerHTML += `<div style="padding:5px; border-bottom:1px solid #eee;">Coche ${t.interno}: ${t.desc}</div>`;
             tall.innerHTML += `<div class="card" style="border-left-color:var(--danger)"><b>Coche ${t.interno}</b>: ${t.desc} ${t.mapa ? `<a href="${t.mapa}" target="_blank" class="btn-map">📍 UBICACIÓN</a>` : ''} ${t.foto ? `<img src="${t.foto}" class="img-preview">` : ''} <button class="btn-green" onclick="db.ref('tareas/${id}').update({estado:'Listo'})">LISTO</button> <button class="btn-red" onclick="if(prompt('Clave:')=='0987') db.ref('tareas/${id}').remove()">BORRAR</button></div>`;
         }
-        // Auxilios también al taller
         db.ref('auxilios').once('value', sax => {
             const dax = sax.val();
             for(let id in dax) {
