@@ -21,7 +21,6 @@
         .img-preview { width: 100%; border-radius: 8px; margin-top: 10px; border: 1px solid #ddd; }
         .btn-map { background: #34495e; margin-top: 10px; font-size: 0.9rem; padding: 12px; display: block; text-decoration: none; text-align: center; border-radius: 6px; color: white; font-weight: bold; }
         .fecha-pro { background: #fff3cd; color: #856404; padding: 10px; border-radius: 6px; font-weight: 900; font-size: 1.4rem; display: block; text-align: center; border: 2px solid #ffeeba; margin-bottom: 12px; }
-        .btn-call { background: #27ae60; display: flex; align-items: center; justify-content: center; text-decoration: none; color: white; padding: 15px; border-radius: 8px; font-weight: bold; margin-bottom: 10px; }
     </style>
 </head>
 <body>
@@ -51,13 +50,6 @@
     </div>
 
     <div id="informacionPublica" class="hidden">
-        <div class="panel" style="border: 2px solid #27ae60;">
-            <h3>📞 LLAMADAS DE EMERGENCIA</h3>
-            <a href="tel:911" class="btn-call" style="background:#e74c3c">📞 POLICÍA (911)</a>
-            <a href="tel:104" class="btn-call" style="background:#f39c12">🔥 BOMBEROS (104)</a>
-            <a href="tel:1994" class="btn-call" style="background:#2c3e50">🛡️ SEGURO (BSE)</a>
-        </div>
-
         <div class="panel" style="border: 3px solid var(--danger); background: #fff5f5;">
             <h3 style="color: var(--danger);">🆘 REPORTE COCHE TIRADO (GPS)</h3>
             <input type="text" id="aux-interno" placeholder="Interno">
@@ -115,7 +107,7 @@
                 <h3>⚙️ Administrar Horarios</h3>
                 <input type="text" id="h-titulo" placeholder="Título">
                 <input type="file" id="h-foto" accept="image/*">
-                <button class="btn-green" onclick="actualizarHorario()">PUBLICA</button>
+                <button class="btn-green" onclick="actualizarHorario()">PUBLICAR</button>
             </div>
             <h3>🔧 Tareas y Auxilios Pendientes</h3>
             <div id="tareasTaller"></div>
