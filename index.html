@@ -24,7 +24,6 @@
         .hidden { display: none !important; }
         .card { border-left: 6px solid var(--accent); padding: 15px; margin-bottom: 20px; background: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: relative; }
         .img-preview { width: 100%; border-radius: 8px; margin-top: 10px; border: 1px solid #ddd; }
-        .horario-titulo { font-size: 1.4rem; font-weight: bold; color: #000; display: block; margin-bottom: 8px; }
         .btn-map { background: #34495e; margin-top: 10px; font-size: 0.9rem; padding: 12px; display: block; text-decoration: none; text-align: center; border-radius: 6px; color: white; font-weight: bold; }
     </style>
 </head>
@@ -63,10 +62,21 @@
             <h3>📅 Planilla de Turnos</h3>
             <div id="verPlanillaHoy">Cargando...</div>
         </div>
-        <div class="panel" style="border-left: 8px solid var(--warning);">
-            <h3>🛠️ Coches en Reparación</h3>
+
+        <div class="panel" style="border: 3px solid var(--danger); background: #fff5f5;">
+            <h3 style="color: var(--danger);">🆘 AUXILIO MECÁNICO (EMERGENCIA)</h3>
+            <p style="font-size: 0.8rem; margin-top: -10px;">Usar solo si el coche quedó tirado.</p>
+            <input type="text" id="aux-interno" placeholder="Interno del Coche">
+            <textarea id="aux-desc" placeholder="¿Qué pasó? (Ej: Sin embrague, pinchado...)"></textarea>
+            <input type="file" id="aux-foto" accept="image/*" capture="environment">
+            <button class="btn-red" onclick="enviarEmergencia()">SOLICITAR ASISTENCIA YA</button>
+        </div>
+
+        <div id="monitorAuxilios"></div> <div class="panel" style="border-left: 8px solid var(--warning);">
+            <h3>🛠️ Coches en Taller</h3>
             <div id="monitorTallerPublico">No hay reportes.</div>
         </div>
+
         <div class="panel">
             <h3>⚠️ Cortes y Desvíos</h3>
             <div id="listaCortes">Cargando...</div>
@@ -74,19 +84,27 @@
     </div>
 
     <div id="sec-acciones" class="hidden">
+        
         <div id="menuConductores" class="hidden">
-            <div class="panel" style="border: 2px solid var(--danger);">
-                <h3>🛠️ Reportar Rotura (GPS)</h3>
-                <input type="text" id="t-interno" placeholder="N° de Coche">
-                <textarea id="t-desc" placeholder="Describa la falla..."></textarea>
-                <input type="file" id="t-foto" accept="image/*" capture="environment">
-                <button class="btn-red" onclick="enviarConFoto('tareas')">REPORTAR CON GPS</button>
+            <div class="panel" style="border: 2px solid var(--accent);">
+                <h3>📋 Actualizar Planilla de Turnos</h3>
+                <input type="file" id="p-foto-cond" accept="image/*" capture="environment">
+                <button class="btn-green" onclick="enviarConFoto('planillas', 'p-foto-cond')">SUBIR NUEVA PLANILLA</button>
             </div>
+
+            <div class="panel">
+                <h3>🛠️ Reportar Falla al Taller</h3>
+                <input type="text" id="t-interno" placeholder="N° de Coche">
+                <textarea id="t-desc" placeholder="Describa la falla técnica..."></textarea>
+                <input type="file" id="t-foto" accept="image/*" capture="environment">
+                <button class="btn-blue" onclick="enviarConFoto('tareas')">REPORTAR FALLA (CON GPS)</button>
+            </div>
+
             <div class="panel" style="border: 2px solid var(--warning);">
                 <h3>🚧 Informar Corte</h3>
                 <textarea id="c-desc" placeholder="Lugar del corte..."></textarea>
                 <input type="file" id="c-foto" accept="image/*" capture="environment">
-                <button class="btn-blue" onclick="enviarConFoto('cortes')">PUBLICAR CORTE GPS</button>
+                <button class="btn-blue" onclick="enviarConFoto('cortes')">PUBLICAR CORTE (CON GPS)</button>
             </div>
         </div>
 
@@ -97,6 +115,7 @@
                 <input type="file" id="h-foto" accept="image/*">
                 <button class="btn-green" onclick="actualizarHorario()">PUBLICAR</button>
             </div>
+            <h3>🔧 Reparaciones y Auxilios</h3>
             <div id="tareasTaller"></div>
         </div>
         <button class="btn-gray" onclick="mostrarSeccion('pantallaBienvenida')">VOLVER AL MENÚ</button>
@@ -144,7 +163,9 @@
     });
 
     function mostrarSeccion(id) {
-        ['pantallaBienvenida', 'seccionHorarios', 'sec-acciones', 'informacionPublica'].forEach(s => document.getElementById(s).classList.add('hidden'));
+        ['pantallaBienvenida', 'seccionHorarios', 'sec-acciones', 'informacionPublica'].forEach(s => {
+            if(document.getElementById(s)) document.getElementById(s).classList.add('hidden');
+        });
         document.getElementById(id).classList.remove('hidden');
         if(id === 'pantallaBienvenida') document.getElementById('informacionPublica').classList.remove('hidden');
     }
@@ -179,24 +200,56 @@
         });
     }
 
-    async function enviarConFoto(nodo) {
+    // ENVIO DE AUXILIO (PANTALLA PRINCIPAL)
+    async function enviarEmergencia() {
+        const user = auth.currentUser;
+        const interno = document.getElementById('aux-interno').value;
+        const desc = document.getElementById('aux-desc').value;
+        const file = document.getElementById('aux-foto').files[0];
+        
+        if(!interno || !desc) return alert("Por favor pon el interno y el problema.");
+
+        alert("Obteniendo GPS de emergencia...");
+        let gps = await obtenerCoordenadas();
+        let foto = file ? await comprimirImagen(file) : null;
+
+        db.ref('auxilios').push({
+            autor: user.email,
+            interno: interno,
+            desc: desc,
+            mapa: gps,
+            foto: foto,
+            fecha: new Date().toLocaleString(),
+            estado: 'URGENTE'
+        });
+        alert("AUXILIO SOLICITADO. El taller ha sido notificado.");
+        location.reload();
+    }
+
+    // ENVIO CONDUCTORES
+    async function enviarConFoto(nodo, customID) {
         const user = auth.currentUser;
         let datos = { autor: user.email, fecha: new Date().toLocaleString() };
-        let fID = (nodo==='tareas' ? 't-foto' : 'c-foto');
+        let fID = customID || (nodo==='tareas' ? 't-foto' : 'c-foto');
         let file = document.getElementById(fID).files[0];
 
-        alert("Obteniendo GPS...");
+        alert("Procesando reporte...");
         datos.mapa = await obtenerCoordenadas();
 
         if(nodo === 'tareas') {
             datos.interno = document.getElementById('t-interno').value;
             datos.desc = document.getElementById('t-desc').value;
             datos.estado = 'Pendiente';
-        } else { datos.desc = document.getElementById('c-desc').value; }
+        } else if(nodo === 'cortes') {
+            datos.desc = document.getElementById('c-desc').value;
+        }
 
         if(file) datos.foto = await comprimirImagen(file);
-        db.ref(nodo).push(datos);
-        alert("Enviado.");
+        
+        if(nodo === 'planillas') db.ref(nodo).set(datos); 
+        else db.ref(nodo).push(datos);
+        
+        alert("Enviado con éxito.");
         location.reload();
     }
 
@@ -209,29 +262,54 @@
         alert("Subido.");
     }
 
-    // --- ESCUCHAS (RECUPERADOS) ---
+    // --- CARGA DE DATOS ---
+
+    // Auxilios en Pantalla Principal
+    db.ref('auxilios').on('value', s => {
+        const d = s.val(); const div = document.getElementById('monitorAuxilios'); div.innerHTML = "";
+        for(let id in d) {
+            if(d[id].estado === 'URGENTE') {
+                div.innerHTML += `<div class="card" style="border-left-color:red; background:#fff0f0">
+                    <b style="color:red">🆘 AUXILIO: COCHE ${d[id].interno}</b><br>
+                    <p>${d[id].desc}</p>
+                    ${d[id].mapa ? `<a href="${d[id].mapa}" target="_blank" class="btn-map" style="background:red">📍 VER UBICACIÓN DE EMERGENCIA</a>` : ''}
+                    <small>${d[id].fecha}</small>
+                </div>`;
+            }
+        }
+    });
+
     db.ref('horarios').on('value', s => {
         const d = s.val(); const div = document.getElementById('contenedorHorarios'); div.innerHTML = "";
-        for(let id in d) div.innerHTML += `<div class="card"><span class="horario-titulo">${d[id].titulo}</span><img src="${d[id].foto}" class="img-preview"><button class="btn-red" onclick="if(prompt('Clave:')=='123456') db.ref('horarios/${id}').remove()">BORRAR</button></div>`;
-    });
-
-    db.ref('cortes').on('value', s => {
-        const d = s.val(); const div = document.getElementById('listaCortes'); div.innerHTML = "";
-        for(let id in d) div.innerHTML += `<div class="card" style="border-left-color:var(--warning)"><p>${d[id].desc}</p>${d[id].mapa ? `<a href="${d[id].mapa}" target="_blank" class="btn-map">📍 VER MAPA</a>` : ''}${d[id].foto ? `<img src="${d[id].foto}" class="img-preview">` : ''}<button onclick="if(prompt('Clave:')=='123456') db.ref('cortes/${id}').remove()" style="color:red; background:none; border:none;">Eliminar</button></div>`;
-    });
-
-    db.ref('tareas').on('value', s => {
-        const d = s.val(); const mon = document.getElementById('monitorTallerPublico'); const tall = document.getElementById('tareasTaller');
-        mon.innerHTML = ""; tall.innerHTML = "";
-        for(let id in d) {
-            const t = d[id];
-            if(t.estado !== 'Listo') mon.innerHTML += `<div style="padding:10px; border-bottom:1px solid #eee;">Coche ${t.interno}: ${t.desc}</div>`;
-            tall.innerHTML += `<div class="card" style="border-left-color:var(--danger)"><b>COCHE ${t.interno}</b><p>${t.desc}</p>${t.mapa ? `<a href="${t.mapa}" target="_blank" class="btn-map" style="background:#e74c3c">📍 UBICACIÓN</a>` : ''}${t.foto ? `<img src="${t.foto}" class="img-preview">` : ''}<button class="btn-green" onclick="db.ref('tareas/${id}').update({estado:'Listo'})">LISTO</button><button class="btn-red" onclick="if(prompt('Clave:')=='123456') db.ref('tareas/${id}').remove()">BORRAR</button></div>`;
-        }
+        for(let id in d) div.innerHTML += `<div class="card"><b>${d[id].titulo}</b><img src="${d[id].foto}" class="img-preview"><button class="btn-red" onclick="if(prompt('Clave:')=='123456') db.ref('horarios/${id}').remove()">BORRAR</button></div>`;
     });
 
     db.ref('planillas').on('value', s => {
         const d = s.val(); document.getElementById('verPlanillaHoy').innerHTML = d ? `<img src="${d.foto}" class="img-preview">` : "Sin planilla.";
+    });
+
+    db.ref('cortes').on('value', s => {
+        const d = s.val(); const div = document.getElementById('listaCortes'); div.innerHTML = "";
+        for(let id in d) div.innerHTML += `<div class="card" style="border-left-color:var(--warning)">${d[id].desc} ${d[id].mapa ? `<a href="${d[id].mapa}" target="_blank" class="btn-map">📍 VER MAPA</a>` : ''} ${d[id].foto ? `<img src="${d[id].foto}" class="img-preview">` : ''} <button class="btn-gray" onclick="if(prompt('Clave:')=='123456') db.ref('cortes/${id}').remove()">Eliminar</button></div>`;
+    });
+
+    db.ref('tareas').on('value', s => {
+        const d = s.val(); const mon = document.getElementById('monitorTallerPublico'); const tall = document.getElementById('tareasTaller'); mon.innerHTML = ""; tall.innerHTML = "";
+        
+        // Tareas normales
+        for(let id in d) {
+            const t = d[id];
+            if(t.estado !== 'Listo') mon.innerHTML += `<div>Coche ${t.interno}: ${t.desc}</div>`;
+            tall.innerHTML += `<div class="card" style="border-left-color:var(--danger)"><b>Coche ${t.interno}</b>: ${t.desc} ${t.mapa ? `<a href="${t.mapa}" target="_blank" class="btn-map">📍 UBICACIÓN</a>` : ''} ${t.foto ? `<img src="${t.foto}" class="img-preview">` : ''} <button class="btn-green" onclick="db.ref('tareas/${id}').update({estado:'Listo'})">LISTO</button> <button class="btn-red" onclick="if(prompt('Clave:')=='123456') db.ref('tareas/${id}').remove()">BORRAR</button></div>`;
+        }
+        
+        // Agregar Auxilios al panel de Taller también
+        db.ref('auxilios').once('value', sax => {
+            const dax = sax.val();
+            for(let id in dax) {
+                tall.innerHTML += `<div class="card" style="border-left: 10px solid red;"><b>🆘 AUXILIO COCHE ${dax[id].interno}</b><p>${dax[id].desc}</p><button class="btn-red" onclick="db.ref('auxilios/${id}').remove()">FINALIZAR AUXILIO</button></div>`;
+            }
+        });
     });
 </script>
 </body>
