@@ -26,7 +26,7 @@
         .img-preview { width: 100%; border-radius: 8px; margin-top: 10px; border: 1px solid #ddd; }
         .horario-titulo { font-size: 1.6rem; font-weight: 900; color: #000; display: block; margin-bottom: 8px; text-transform: uppercase; }
         .status-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; background: var(--warning); color: white; margin-bottom: 5px; }
-        .btn-map { background: #34495e; margin-top: 5px; font-size: 0.8rem; padding: 8px; }
+        .btn-map { background: #34495e; margin-top: 10px; font-size: 0.9rem; padding: 12px; display: block; text-decoration: none; text-align: center; border-radius: 6px; color: white; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -79,21 +79,21 @@
         <div id="infoUsuario" style="margin-bottom:15px; font-weight:bold; text-align:center; color:var(--accent);"></div>
         
         <div id="menuConductores" class="hidden">
-            <div class="panel">
-                <h3>🛠️ Reportar Falla</h3>
+            <div class="panel" style="border: 2px solid var(--danger);">
+                <h3>🛠️ Reportar Rotura (Urgente)</h3>
                 <input type="text" id="t-interno" placeholder="N° de Coche">
-                <textarea id="t-desc" placeholder="Describa la falla..."></textarea>
+                <textarea id="t-desc" placeholder="Describa la falla técnica..."></textarea>
                 <input type="file" id="t-foto" accept="image/*" capture="environment">
-                <button class="btn-blue" onclick="enviarConFoto('tareas')">REPORTAR ROTURA CON UBICACIÓN</button>
+                <button class="btn-red" onclick="enviarConFoto('tareas')">ENVIAR REPORTE CON GPS</button>
             </div>
             <div class="panel">
                 <h3>📋 Actualizar Planilla</h3>
                 <input type="file" id="p-foto-cond" accept="image/*" capture="environment">
                 <button class="btn-green" onclick="enviarConFoto('planillas', 'p-foto-cond')">SUBIR PLANILLA</button>
             </div>
-            <div class="panel">
-                <h3>🚧 Informar Corte</h3>
-                <textarea id="c-desc" placeholder="Ubicación..."></textarea>
+            <div class="panel" style="border: 2px solid var(--warning);">
+                <h3>🚧 Informar Corte o Desvío</h3>
+                <textarea id="c-desc" placeholder="Ej: Calle Artigas cortada por obra..."></textarea>
                 <input type="file" id="c-foto" accept="image/*" capture="environment">
                 <button class="btn-blue" onclick="enviarConFoto('cortes')">PUBLICAR CORTE CON GPS</button>
             </div>
@@ -107,7 +107,7 @@
                 <button class="btn-green" onclick="actualizarHorario()">PUBLICAR HORARIO</button>
             </div>
             <div class="panel">
-                <h3>🔧 Lista de Reparaciones</h3>
+                <h3>🔧 Lista de Reparaciones Recibidas</h3>
                 <div id="tareasTaller"></div>
             </div>
         </div>
@@ -116,7 +116,6 @@
 </div>
 
 <script>
-    // --- CONFIGURACIÓN FIREBASE ---
     const firebaseConfig = {
       apiKey: "AIzaSyCO2ngrIv3QRdyxgk9USv4sa0b2nPlF8Fw",
       databaseURL: "https://taller-salto-default-rtdb.firebaseio.com/",
@@ -126,44 +125,36 @@
     const db = firebase.database();
     const auth = firebase.auth();
 
-    // --- PLUGINS DE CAPACITOR ---
     const { PushNotifications, Geolocation } = (typeof Capacitor !== 'undefined') ? Capacitor.Plugins : { PushNotifications: null, Geolocation: null };
 
     const registrarNotificaciones = async () => {
         if (PushNotifications) {
             let perm = await PushNotifications.requestPermissions();
-            if (perm.receive === 'granted') {
-                await PushNotifications.register();
-            }
-            PushNotifications.addListener('pushNotificationReceived', (notification) => {
-                alert("AVISO IMPORTANTE:\n" + notification.title + "\n" + notification.body);
-            });
+            if (perm.receive === 'granted') { await PushNotifications.register(); }
+            PushNotifications.addListener('pushNotificationReceived', (n) => { alert("AVISO:\n" + n.title + "\n" + n.body); });
         }
     };
     registrarNotificaciones();
 
-    // Función para obtener GPS
     async function obtenerCoordenadas() {
         if (!Geolocation) return null;
         try {
-            const coordinates = await Geolocation.getCurrentPosition();
-            return `https://www.google.com/maps?q=${coordinates.coords.latitude},${coordinates.coords.longitude}`;
+            const c = await Geolocation.getCurrentPosition();
+            // Link directo a Google Maps
+            return `https://www.google.com/maps?q=${c.coords.latitude},${c.coords.longitude}`;
         } catch (e) {
             console.error("Error GPS:", e);
             return null;
         }
     }
 
-    // --- AUTENTICACIÓN ---
     function login() {
         const email = document.getElementById('loginEmail').value;
         const pass = document.getElementById('loginPass').value;
         auth.signInWithEmailAndPassword(email, pass).catch(error => alert("Error: " + error.message));
     }
 
-    function cerrarSesion() {
-        auth.signOut().then(() => { location.reload(); });
-    }
+    function cerrarSesion() { auth.signOut().then(() => { location.reload(); }); }
 
     auth.onAuthStateChanged(user => {
         if (user) {
@@ -178,7 +169,6 @@
         }
     });
 
-    // --- NAVEGACIÓN ---
     function mostrarSeccion(id) {
         const ids = ['pantallaBienvenida', 'seccionHorarios', 'sec-acciones', 'informacionPublica'];
         ids.forEach(sec => { if(document.getElementById(sec)) document.getElementById(sec).classList.add('hidden'); });
@@ -199,7 +189,6 @@
         }
     }
 
-    // --- COMPRESIÓN DE IMAGEN ---
     async function comprimirImagen(file) {
         return new Promise((resolve) => {
             const reader = new FileReader();
@@ -222,31 +211,28 @@
         });
     }
 
-    // --- FUNCIONES DE SUBIDA ---
     async function enviarConFoto(nodo, inputManual = null) {
         const user = auth.currentUser;
         let datos = { autor: user.email, fecha: new Date().toLocaleString() };
         let fID = inputManual || (nodo==='tareas' ? 't-foto' : (nodo==='cortes' ? 'c-foto' : 'p-foto-cond'));
         let file = document.getElementById(fID).files[0];
 
+        alert("Capturando ubicación y procesando...");
+        datos.mapa = await obtenerCoordenadas();
+
         if(nodo === 'tareas') { 
             datos.interno = document.getElementById('t-interno').value; 
             datos.desc = document.getElementById('t-desc').value; 
             datos.estado = 'Pendiente';
-            datos.mapa = await obtenerCoordenadas(); // Captura GPS
         }
         if(nodo === 'cortes') { 
             datos.desc = document.getElementById('c-desc').value; 
-            datos.mapa = await obtenerCoordenadas(); // Captura GPS
         }
         
-        if(file) {
-            alert("Comprimiendo foto y capturando ubicación...");
-            datos.foto = await comprimirImagen(file);
-        }
+        if(file) { datos.foto = await comprimirImagen(file); }
         
         if(nodo === 'planillas') db.ref(nodo).set(datos); else db.ref(nodo).push(datos);
-        alert("Enviado con éxito. ¡Gracias por el reporte!");
+        alert("¡Enviado con éxito!");
         location.reload();
     }
 
@@ -276,13 +262,14 @@
 
     db.ref('cortes').on('value', s => {
         const d = s.val(); const div = document.getElementById('listaCortes'); div.innerHTML = "";
-        if(!d) return div.innerHTML = "Sin cortes.";
+        if(!d) return div.innerHTML = "Sin cortes actuales.";
         for(let id in d) {
-            div.innerHTML += `<div class="card" style="border-left-color:red">
+            div.innerHTML += `<div class="card" style="border-left-color:var(--warning)">
                 <button onclick="if(prompt('Clave:')=='123456') db.ref('cortes/${id}').remove()" style="float:right; background:none; color:red; border:none; font-size:20px">×</button>
-                ${d[id].desc} 
-                ${d[id].mapa ? `<br><a href="${d[id].mapa}" target="_blank" class="button btn-blue btn-map">📍 VER UBICACIÓN DEL CORTE</a>` : ''}
+                <p><b>Detalle:</b> ${d[id].desc}</p>
+                ${d[id].mapa ? `<a href="${d[id].mapa}" target="_blank" class="btn-map">📍 VER EN GOOGLE MAPS</a>` : ''}
                 ${d[id].foto ? `<img src="${d[id].foto}" class="img-preview">` : ''}
+                <br><small>${d[id].fecha}</small>
             </div>`;
         }
     });
@@ -296,12 +283,14 @@
             if(t.estado !== 'Listo') {
                 mon.innerHTML += `<div style="padding:10px; border-bottom:1px solid #eee;"><span class="status-badge">TALLER</span> <b>Coche ${t.interno}</b>: ${t.desc}</div>`;
             }
-            tall.innerHTML += `<div class="card">
-                <b>Interno: ${t.interno}</b><br>${t.desc}<br>
-                ${t.mapa ? `<a href="${t.mapa}" target="_blank" class="button btn-blue btn-map">📍 VER DONDE QUEDÓ EL COCHE</a><br>` : ''}
+            tall.innerHTML += `<div class="card" style="border-left-color:var(--danger)">
+                <b>COCHE INTERNO: ${t.interno}</b><br>
+                <p><b>Falla:</b> ${t.desc}</p>
+                ${t.mapa ? `<a href="${t.mapa}" target="_blank" class="btn-map" style="background:#e74c3c">📍 VER DONDE QUEDÓ EL COCHE</a>` : ''}
                 ${t.foto ? `<img src="${t.foto}" class="img-preview">` : ''}
-                <button class="btn-green" onclick="db.ref('tareas/${id}').update({estado:'Listo'})">LISTO</button>
+                <button class="btn-green" onclick="db.ref('tareas/${id}').update({estado:'Listo'})">MARCAR COMO LISTO</button>
                 <button class="btn-red" onclick="if(prompt('Clave:')=='123456') db.ref('tareas/${id}').remove()">ELIMINAR</button>
+                <br><small>Reportado: ${t.fecha}</small>
             </div>`;
         }
     });
