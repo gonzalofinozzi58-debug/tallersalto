@@ -26,7 +26,7 @@
 </head>
 <body>
 
-<header><h1>División Ómnibus</h1><small>App No Oficial - Salto</small></header>
+<header><h1>División Ómnibus</h1><small>aplicacion no oficial</small></header>
 
 <div class="container">
     <div id="seccionLogin" class="panel">
@@ -37,10 +37,10 @@
     </div>
 
     <div id="pantallaBienvenida" class="panel hidden" style="text-align:center">
-        <h3 id="saludoUsuario">Hola</h3>
-        <button class="btn-blue" onclick="mostrarSeccionPrivada('conductores')">ACCESO CONDUCTORES</button>
-        <button class="btn-blue" style="background:#2c3e50" onclick="mostrarSeccion('seccionHorarios')">📅 VER HORARIOS</button>
-        <button class="btn-blue" onclick="mostrarSeccionPrivada('taller')">PERSONAL DE TALLER</button>
+        <h3 id="saludoUsuario">funcionario</h3>
+        <button class="btn-blue" onclick="mostrarSeccionPrivada('conductores')">CONDUCTORES</button>
+        <button class="btn-blue" style="background:#2c3e50" onclick="mostrarSeccion('seccionHorarios')">📅 horarios(todos)</button>
+        <button class="btn-blue" onclick="mostrarSeccionPrivada('taller')">Panel de taller</button>
         <button class="btn-gray" onclick="cerrarSesion()">CERRAR SESIÓN</button>
     </div>
 
@@ -52,9 +52,9 @@
 
     <div id="informacionPublica" class="hidden">
         <div class="panel" style="border: 3px solid var(--danger); background: #fff5f5;">
-            <h3 style="color: var(--danger);">🆘 REPORTE COCHE TIRADO (GPS)</h3>
-            <input type="text" id="aux-interno" placeholder="Interno">
-            <input type="text" id="aux-nombre" placeholder="Nombre Chofer">
+            <h3 style="color: var(--danger);">🆘 Reporte rotura en calle con GPS</h3>
+            <input type="text" id="aux-interno" placeholder="LINEA">
+            <input type="text" id="aux-nombre" placeholder="TURNO">
             <textarea id="aux-desc" placeholder="¿Qué rotura tiene?"></textarea>
             <input type="file" id="aux-foto" accept="image/*" capture="environment">
             <button class="btn-red" onclick="enviarEmergencia()">ENVIAR AUXILIO CON GPS</button>
@@ -81,7 +81,7 @@
             <h3>📞 LLAMADAS DE EMERGENCIA</h3>
             <a href="tel:911" class="btn-call" style="background:#e74c3c">📞 POLICÍA (911)</a>
             <a href="tel:104" class="btn-call" style="background:#f39c12">🔥 BOMBEROS (104)</a>
-            <a href="tel:1994" class="btn-call" style="background:#2c3e50">🛡️ SEGURO (BSE)</a>
+            <a href="tel:1998" class="btn-call" style="background:#2c3e50">🛡️ SEGURO (B.S.E.)</a>
         </div>
     </div>
 
