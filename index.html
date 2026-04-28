@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>División Ómnibus - Salto</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
@@ -197,6 +197,7 @@
         });
     }
 
+    // --- FUNCION PARA PUBLICAR COMUNICADOS ---
     function publicarComunicado() {
         const txt = document.getElementById('com-texto-main').value;
         const user = auth.currentUser;
@@ -212,10 +213,12 @@
         alert("Publicado en la pizarra");
     }
 
+    // --- CARGA DE COMUNICADOS EN LA PIZARRA ---
     db.ref('comunicados').on('value', s => {
         const d = s.val(); const div = document.getElementById('listaComunicados'); div.innerHTML = "";
         if(!d) { div.innerHTML = "<p style='text-align:center; color:gray;'>No hay comunicados activos.</p>"; return; }
         
+        // Mostrar los más nuevos arriba
         const keys = Object.keys(d).reverse();
         keys.forEach(id => {
             div.innerHTML += `
