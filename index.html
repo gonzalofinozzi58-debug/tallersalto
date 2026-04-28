@@ -25,21 +25,23 @@
         .visor-fondo {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0,0,0,0.95); z-index: 9999;
-            overflow: auto; /* Habilita el scroll vertical y horizontal nativo */
-            box-sizing: border-box; padding: 10px;
+            overflow: auto; /* Habilita el scroll */
+            -webkit-overflow-scrolling: touch; /* Scroll suave en celulares */
+            display: flex; align-items: center; justify-content: center; /* Centra la foto chica */
+        }
+        .visor-fondo.zoomed {
+            display: block; /* MAGIA: Quita el centrado para liberar el scroll total */
         }
         .visor-img {
-            display: block;
-            width: 100%; /* Empieza encajando en el ancho del celular */
-            max-width: 100%;
-            margin: 15vh auto; /* La centra verticalmente al abrir */
+            max-width: 100%; max-height: 100vh;
             cursor: zoom-in;
-            transition: width 0.2s ease-in-out;
+            transition: 0.2s ease-in-out;
         }
-        .visor-zoom {
-            width: 300%; /* Cambia el tamaño FÍSICO de la imagen al triple */
-            max-width: none; /* Rompe la barrera del celular */
-            margin: 0; /* Se pega al borde superior izquierdo para que puedas moverte por TODA la foto */
+        .visor-img.visor-zoom {
+            max-width: none; max-height: none;
+            width: 300%; /* Tamaño gigante */
+            display: block;
+            margin: 0; /* Lo pega a la izquierda para poder navegar */
             cursor: zoom-out;
         }
         /* --------------------------------------------------- */
@@ -177,10 +179,11 @@
         img.src = src;
         img.className = 'visor-img';
         
-        // Al tocar la imagen cambia su ancho a 300%
+        // Al tocar la imagen hace zoom y libera el scroll
         img.onclick = function(e) {
             e.stopPropagation(); // Evita que el fondo se cierre al hacer zoom
             img.classList.toggle('visor-zoom');
+            fondo.classList.toggle('zoomed'); // MAGIA: Quita el candado de movimiento
         };
 
         // Al tocar lo negro, salimos
@@ -343,19 +346,4 @@
     });
 
     db.ref('tareas').on('value', s => {
-        const d = s.val(); const mon = document.getElementById('monitorTallerPublico'); const tall = document.getElementById('tareasTaller'); mon.innerHTML = ""; tall.innerHTML = "";
-        for(let id in d) {
-            const t = d[id];
-            if(t.estado !== 'Listo') mon.innerHTML += `<div style="padding:5px; border-bottom:1px solid #eee;">Coche ${t.interno}: ${t.desc}</div>`;
-            tall.innerHTML += `<div class="card"><b>Coche ${t.interno}</b>: ${t.desc} ${t.foto ? `<img src="${t.foto}" class="img-preview" onclick="abrirVisor(this.src)">` : ''} <button class="btn-green" onclick="db.ref('tareas/${id}').update({estado:'Listo'})">LISTO</button> <button class="btn-red" onclick="if(prompt('Clave:')=='0987') db.ref('tareas/${id}').remove()">BORRAR</button></div>`;
-        }
-        db.ref('auxilios').once('value', sax => {
-            const dax = sax.val();
-            for(let id in dax) tall.innerHTML += `<div class="card" style="border-left: 10px solid red;"><b>🆘 AUXILIO COCHE ${dax[id].interno}</b><p>${dax[id].desc}</p><button class="btn-red" onclick="db.ref('auxilios/${id}').remove()">FINALIZAR AUXILIO</button></div>`;
-        });
-    });
-
-    db.ref('planillas').on('value', s => { const d = s.val(); document.getElementById('verPlanillaHoy').innerHTML = d ? `<img src="${d.foto}" class="img-preview" onclick="abrirVisor(this.src)">` : "Sin planilla"; });
-</script>
-</body>
-</html>
+        const d = s.val(); const mon = document.getElementById('monitorTallerPublico'); const tall = document.getElementById('tareasT
