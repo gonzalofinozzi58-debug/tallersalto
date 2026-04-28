@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>División Ómnibus - Salto</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
@@ -10,6 +10,9 @@
     <style>
         :root { --primary: #2c3e50; --accent: #3498db; --danger: #e74c3c; --success: #27ae60; --warning: #f39c12; }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f4f7f6; color: #333; padding-bottom: 50px; }
+        /* Evita mover el fondo cuando la imagen está abierta */
+        body.no-scroll { overflow: hidden; position: fixed; width: 100%; }
+        
         header { background: var(--primary); color: white; padding: 20px; text-align: center; }
         .container { max-width: 800px; margin: auto; padding: 15px; }
         .panel { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
@@ -19,34 +22,31 @@
         .hidden { display: none !important; }
         .card { border-left: 6px solid var(--accent); padding: 15px; margin-bottom: 20px; background: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: relative; }
         
-        /* --- MEJORA DE ZOOM CORREGIDA --- */
         .img-preview { 
             width: 100%; 
             border-radius: 8px; 
             margin-top: 10px; 
             border: 1px solid #ddd; 
             cursor: zoom-in;
-            transition: 0.2s;
         }
-        .img-zoom {
+
+        /* CAPA DE ZOOM MEJORADA */
+        .img-zoom-overlay {
             position: fixed;
             top: 0; left: 0;
             width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95);
-            z-index: 9999;
-            cursor: zoom-out;
+            background: rgba(0,0,0,0.98);
+            z-index: 10000;
             display: flex;
             align-items: center;
             justify-content: center;
-            overflow: auto; /* Permite scroll cuando hay zoom */
+            touch-action: pinch-zoom; /* Permite zoom nativo */
         }
-        .img-zoom img {
-            max-width: none; /* Permite que crezca más que la pantalla */
+        .img-zoom-overlay img {
+            max-width: 100%;
             max-height: 100%;
             object-fit: contain;
-            touch-action: pinch-zoom; /* Habilita explícitamente el zoom táctil */
         }
-        /* ---------------------- */
 
         .btn-map { background: #34495e; margin-top: 10px; font-size: 0.9rem; padding: 12px; display: block; text-decoration: none; text-align: center; border-radius: 6px; color: white; font-weight: bold; }
         .fecha-pro { background: #fff3cd; color: #856404; padding: 10px; border-radius: 6px; font-weight: 900; font-size: 1.4rem; display: block; text-align: center; border: 2px solid #ffeeba; margin-bottom: 12px; }
@@ -169,18 +169,23 @@
     const db = firebase.database(); const auth = firebase.auth();
     const { Geolocation } = (typeof Capacitor !== 'undefined') ? Capacitor.Plugins : { Geolocation: null };
 
-    // --- FUNCIÓN DE ZOOM CORREGIDA ---
+    // --- FUNCIÓN DE ZOOM CORREGIDA (CON BLOQUEO DE FONDO) ---
     function toggleZoom(imgElement) {
-        if (imgElement.parentElement.classList.contains('img-zoom')) {
-            imgElement.parentElement.remove();
-        } else {
-            const wrap = document.createElement('div');
-            wrap.className = 'img-zoom';
-            const clone = imgElement.cloneNode();
-            wrap.onclick = () => wrap.remove();
-            wrap.appendChild(clone);
-            document.body.appendChild(wrap);
-        }
+        const overlay = document.createElement('div');
+        overlay.className = 'img-zoom-overlay';
+        
+        const clone = imgElement.cloneNode();
+        overlay.appendChild(clone);
+        
+        // Bloqueamos el scroll del body
+        document.body.classList.add('no-scroll');
+        
+        overlay.onclick = () => {
+            overlay.remove();
+            document.body.classList.remove('no-scroll');
+        };
+        
+        document.body.appendChild(overlay);
     }
 
     async function obtenerCoordenadas() {
