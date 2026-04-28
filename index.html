@@ -19,7 +19,7 @@
         .hidden { display: none !important; }
         .card { border-left: 6px solid var(--accent); padding: 15px; margin-bottom: 20px; background: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: relative; }
         
-        /* --- MEJORA DE ZOOM --- */
+        /* --- MEJORA DE ZOOM CORREGIDA --- */
         .img-preview { 
             width: 100%; 
             border-radius: 8px; 
@@ -31,11 +31,20 @@
         .img-zoom {
             position: fixed;
             top: 0; left: 0;
-            width: 100vw; height: 100vh;
-            background: rgba(0,0,0,0.9);
-            object-fit: contain;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95);
             z-index: 9999;
             cursor: zoom-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: auto; /* Permite scroll cuando hay zoom */
+        }
+        .img-zoom img {
+            max-width: none; /* Permite que crezca más que la pantalla */
+            max-height: 100%;
+            object-fit: contain;
+            touch-action: pinch-zoom; /* Habilita explícitamente el zoom táctil */
         }
         /* ---------------------- */
 
@@ -160,8 +169,19 @@
     const db = firebase.database(); const auth = firebase.auth();
     const { Geolocation } = (typeof Capacitor !== 'undefined') ? Capacitor.Plugins : { Geolocation: null };
 
-    // --- FUNCIÓN DE ZOOM ---
-    function toggleZoom(img) { img.classList.toggle('img-zoom'); }
+    // --- FUNCIÓN DE ZOOM CORREGIDA ---
+    function toggleZoom(imgElement) {
+        if (imgElement.parentElement.classList.contains('img-zoom')) {
+            imgElement.parentElement.remove();
+        } else {
+            const wrap = document.createElement('div');
+            wrap.className = 'img-zoom';
+            const clone = imgElement.cloneNode();
+            wrap.onclick = () => wrap.remove();
+            wrap.appendChild(clone);
+            document.body.appendChild(wrap);
+        }
+    }
 
     async function obtenerCoordenadas() {
         if (!Geolocation) return null;
