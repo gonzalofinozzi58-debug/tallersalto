@@ -18,7 +18,27 @@
         .btn-blue { background: var(--accent); } .btn-green { background: var(--success); } .btn-red { background: var(--danger); } .btn-gray { background: #7f8c8d; }
         .hidden { display: none !important; }
         .card { border-left: 6px solid var(--accent); padding: 15px; margin-bottom: 20px; background: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: relative; }
-        .img-preview { width: 100%; border-radius: 8px; margin-top: 10px; border: 1px solid #ddd; }
+        
+        /* --- MEJORA DE ZOOM --- */
+        .img-preview { 
+            width: 100%; 
+            border-radius: 8px; 
+            margin-top: 10px; 
+            border: 1px solid #ddd; 
+            cursor: zoom-in;
+            transition: 0.2s;
+        }
+        .img-zoom {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.9);
+            object-fit: contain;
+            z-index: 9999;
+            cursor: zoom-out;
+        }
+        /* ---------------------- */
+
         .btn-map { background: #34495e; margin-top: 10px; font-size: 0.9rem; padding: 12px; display: block; text-decoration: none; text-align: center; border-radius: 6px; color: white; font-weight: bold; }
         .fecha-pro { background: #fff3cd; color: #856404; padding: 10px; border-radius: 6px; font-weight: 900; font-size: 1.4rem; display: block; text-align: center; border: 2px solid #ffeeba; margin-bottom: 12px; }
         .btn-call { background: #27ae60; display: flex; align-items: center; justify-content: center; text-decoration: none; color: white; padding: 15px; border-radius: 8px; font-weight: bold; margin-bottom: 10px; }
@@ -79,14 +99,11 @@
 
         <div class="panel" style="border: 4px solid #2c3e50; min-height: 300px;">
             <h2 style="background: #2c3e50; color: white; padding: 15px; margin: -20px -20px 20px -20px; border-radius: 10px 10px 0 0; text-align: center;">📢 COMUNICADOS</h2>
-            
             <div style="background: #fcf3cf; padding: 15px; border-radius: 8px; border: 1px solid #f39c12; margin-bottom: 20px;">
                 <textarea id="com-texto-main" style="height: 120px; font-size: 1.1rem;" placeholder="Escriba aquí el nuevo comunicado para todos..."></textarea>
                 <button class="btn-blue" style="background: #2c3e50;" onclick="publicarComunicado()">PUBLICAR EN LA PIZARRA</button>
             </div>
-
-            <div id="listaComunicados">
-                </div>
+            <div id="listaComunicados"></div>
         </div>
 
         <div class="panel" style="border: 2px solid #27ae60;">
@@ -143,6 +160,9 @@
     const db = firebase.database(); const auth = firebase.auth();
     const { Geolocation } = (typeof Capacitor !== 'undefined') ? Capacitor.Plugins : { Geolocation: null };
 
+    // --- FUNCIÓN DE ZOOM ---
+    function toggleZoom(img) { img.classList.toggle('img-zoom'); }
+
     async function obtenerCoordenadas() {
         if (!Geolocation) return null;
         try {
@@ -197,12 +217,10 @@
         });
     }
 
-    // --- FUNCION PARA PUBLICAR COMUNICADOS ---
     function publicarComunicado() {
         const txt = document.getElementById('com-texto-main').value;
         const user = auth.currentUser;
         if(!txt) return alert("Escriba un mensaje");
-        
         db.ref('comunicados').push({
             mensaje: txt,
             autor: user ? user.email : "Desconocido",
@@ -213,12 +231,9 @@
         alert("Publicado en la pizarra");
     }
 
-    // --- CARGA DE COMUNICADOS EN LA PIZARRA ---
     db.ref('comunicados').on('value', s => {
         const d = s.val(); const div = document.getElementById('listaComunicados'); div.innerHTML = "";
         if(!d) { div.innerHTML = "<p style='text-align:center; color:gray;'>No hay comunicados activos.</p>"; return; }
-        
-        // Mostrar los más nuevos arriba
         const keys = Object.keys(d).reverse();
         keys.forEach(id => {
             div.innerHTML += `
@@ -275,7 +290,7 @@
                 <b style="color:red; font-size:1.2rem">🆘 AUXILIO: COCHE ${d[id].interno}</b><br>
                 <b>Conductor:</b> ${d[id].conductor}<br><p>${d[id].desc}</p>
                 ${d[id].mapa ? `<a href="${d[id].mapa}" target="_blank" class="btn-map" style="background:red">📍 UBICACIÓN</a>` : ''}
-                ${d[id].foto ? `<img src="${d[id].foto}" class="img-preview">` : ''}
+                ${d[id].foto ? `<img src="${d[id].foto}" class="img-preview" onclick="toggleZoom(this)">` : ''}
                 <br><small>${d[id].fecha}</small>
             </div>`;
         }
@@ -283,7 +298,7 @@
 
     db.ref('horarios').on('value', s => {
         const d = s.val(); const div = document.getElementById('contenedorHorarios'); div.innerHTML = "";
-        for(let id in d) div.innerHTML += `<div class="card"><b>${d[id].titulo}</b><img src="${d[id].foto}" class="img-preview"><button class="btn-red" onclick="if(prompt('Clave:')=='0987') db.ref('horarios/${id}').remove()">BORRAR</button></div>`;
+        for(let id in d) div.innerHTML += `<div class="card"><b>${d[id].titulo}</b><img src="${d[id].foto}" class="img-preview" onclick="toggleZoom(this)"><button class="btn-red" onclick="if(prompt('Clave:')=='0987') db.ref('horarios/${id}').remove()">BORRAR</button></div>`;
     });
 
     db.ref('cortes').on('value', s => {
@@ -292,7 +307,7 @@
             <span class="fecha-pro">📅 ${d[id].fecha}</span>
             <p style="font-size:1.1rem"><b>Detalle:</b> ${d[id].desc}</p>
             ${d[id].mapa ? `<a href="${d[id].mapa}" target="_blank" class="btn-map">📍 VER MAPA</a>` : ''}
-            ${d[id].foto ? `<img src="${d[id].foto}" class="img-preview">` : ''}
+            ${d[id].foto ? `<img src="${d[id].foto}" class="img-preview" onclick="toggleZoom(this)">` : ''}
             <button style="color:red; background:none; border:none; margin-top:15px" onclick="if(prompt('Clave:')=='6677') db.ref('cortes/${id}').remove()">Borrar reporte x</button>
         </div>`;
     });
@@ -302,7 +317,7 @@
         for(let id in d) {
             const t = d[id];
             if(t.estado !== 'Listo') mon.innerHTML += `<div style="padding:5px; border-bottom:1px solid #eee;">Coche ${t.interno}: ${t.desc}</div>`;
-            tall.innerHTML += `<div class="card"><b>Coche ${t.interno}</b>: ${t.desc} ${t.foto ? `<img src="${t.foto}" class="img-preview">` : ''} <button class="btn-green" onclick="db.ref('tareas/${id}').update({estado:'Listo'})">LISTO</button> <button class="btn-red" onclick="if(prompt('Clave:')=='0987') db.ref('tareas/${id}').remove()">BORRAR</button></div>`;
+            tall.innerHTML += `<div class="card"><b>Coche ${t.interno}</b>: ${t.desc} ${t.foto ? `<img src="${t.foto}" class="img-preview" onclick="toggleZoom(this)">` : ''} <button class="btn-green" onclick="db.ref('tareas/${id}').update({estado:'Listo'})">LISTO</button> <button class="btn-red" onclick="if(prompt('Clave:')=='0987') db.ref('tareas/${id}').remove()">BORRAR</button></div>`;
         }
         db.ref('auxilios').once('value', sax => {
             const dax = sax.val();
@@ -310,7 +325,7 @@
         });
     });
 
-    db.ref('planillas').on('value', s => { const d = s.val(); document.getElementById('verPlanillaHoy').innerHTML = d ? `<img src="${d.foto}" class="img-preview">` : "Sin planilla"; });
+    db.ref('planillas').on('value', s => { const d = s.val(); document.getElementById('verPlanillaHoy').innerHTML = d ? `<img src="${d.foto}" class="img-preview" onclick="toggleZoom(this)">` : "Sin planilla"; });
 </script>
 </body>
 </html>
