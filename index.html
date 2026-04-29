@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>División Ómnibus - Salto</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
@@ -19,19 +19,18 @@
         .hidden { display: none !important; }
         .card { border-left: 6px solid var(--accent); padding: 15px; margin-bottom: 20px; background: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: relative; }
         
+        /* Estilo para las fotos en el muro */
         .img-preview { width: 100%; border-radius: 8px; margin-top: 10px; border: 1px solid #ddd; cursor: pointer; }
         
-        /* --- VISOR INFALIBLE CORREGIDO PARA SCROLL TOTAL --- */
+        /* --- VISOR DE IMAGENES CON SCROLL TOTAL --- */
         .visor-fondo {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0,0,0,0.95); z-index: 9999;
-            overflow: auto; /* Habilita el scroll */
-            -webkit-overflow-scrolling: touch; /* Scroll suave en celulares */
-            display: flex; align-items: center; justify-content: center; /* Centra la foto chica */
+            overflow: auto; 
+            -webkit-overflow-scrolling: touch;
+            display: flex; align-items: center; justify-content: center;
         }
-        .visor-fondo.zoomed {
-            display: block; /* MAGIA: Quita el centrado para liberar el scroll total */
-        }
+        .visor-fondo.zoomed { display: block; }
         .visor-img {
             max-width: 100%; max-height: 100vh;
             cursor: zoom-in;
@@ -39,12 +38,12 @@
         }
         .visor-img.visor-zoom {
             max-width: none; max-height: none;
-            width: 300%; /* Tamaño gigante */
+            width: 300%; 
             display: block;
-            margin: 0; /* Lo pega a la izquierda para poder navegar */
+            margin: 0; 
             cursor: zoom-out;
         }
-        /* --------------------------------------------------- */
+        /* ------------------------------------------- */
 
         .btn-map { background: #34495e; margin-top: 10px; font-size: 0.9rem; padding: 12px; display: block; text-decoration: none; text-align: center; border-radius: 6px; color: white; font-weight: bold; }
         .fecha-pro { background: #fff3cd; color: #856404; padding: 10px; border-radius: 6px; font-weight: 900; font-size: 1.4rem; display: block; text-align: center; border: 2px solid #ffeeba; margin-bottom: 12px; }
@@ -106,14 +105,11 @@
 
         <div class="panel" style="border: 4px solid #2c3e50; min-height: 300px;">
             <h2 style="background: #2c3e50; color: white; padding: 15px; margin: -20px -20px 20px -20px; border-radius: 10px 10px 0 0; text-align: center;">📢 COMUNICADOS</h2>
-            
             <div style="background: #fcf3cf; padding: 15px; border-radius: 8px; border: 1px solid #f39c12; margin-bottom: 20px;">
                 <textarea id="com-texto-main" style="height: 120px; font-size: 1.1rem;" placeholder="Escriba aquí el nuevo comunicado para todos..."></textarea>
                 <button class="btn-blue" style="background: #2c3e50;" onclick="publicarComunicado()">PUBLICAR EN LA PIZARRA</button>
             </div>
-
-            <div id="listaComunicados">
-                </div>
+            <div id="listaComunicados"></div>
         </div>
 
         <div class="panel" style="border: 2px solid #27ae60;">
@@ -170,29 +166,22 @@
     const db = firebase.database(); const auth = firebase.auth();
     const { Geolocation } = (typeof Capacitor !== 'undefined') ? Capacitor.Plugins : { Geolocation: null };
 
-    // --- FUNCION DE VISOR INFALIBLE CORREGIDA ---
+    // --- FUNCIÓN DE VISOR DEFINITIVA ---
     function abrirVisor(src) {
         const fondo = document.createElement('div');
         fondo.className = 'visor-fondo';
-        
         const img = document.createElement('img');
         img.src = src;
         img.className = 'visor-img';
-        
-        // Al tocar la imagen hace zoom y libera el scroll
         img.onclick = function(e) {
-            e.stopPropagation(); // Evita que el fondo se cierre al hacer zoom
+            e.stopPropagation();
             img.classList.toggle('visor-zoom');
-            fondo.classList.toggle('zoomed'); // MAGIA: Quita el candado de movimiento
+            fondo.classList.toggle('zoomed');
         };
-
-        // Al tocar lo negro, salimos
         fondo.onclick = function() { fondo.remove(); };
-
         fondo.appendChild(img);
         document.body.appendChild(fondo);
     }
-    // ---------------------------------------------
 
     async function obtenerCoordenadas() {
         if (!Geolocation) return null;
@@ -203,7 +192,12 @@
         } catch (e) { return null; }
     }
 
-    function login() { auth.signInWithEmailAndPassword(document.getElementById('loginEmail').value, document.getElementById('loginPass').value).catch(e => alert(e.message)); }
+    function login() { 
+        const email = document.getElementById('loginEmail').value;
+        const pass = document.getElementById('loginPass').value;
+        auth.signInWithEmailAndPassword(email, pass).catch(e => alert("Error: " + e.message)); 
+    }
+    
     function cerrarSesion() { auth.signOut().then(() => location.reload()); }
 
     auth.onAuthStateChanged(user => {
@@ -252,7 +246,6 @@
         const txt = document.getElementById('com-texto-main').value;
         const user = auth.currentUser;
         if(!txt) return alert("Escriba un mensaje");
-        
         db.ref('comunicados').push({
             mensaje: txt,
             autor: user ? user.email : "Desconocido",
@@ -266,7 +259,6 @@
     db.ref('comunicados').on('value', s => {
         const d = s.val(); const div = document.getElementById('listaComunicados'); div.innerHTML = "";
         if(!d) { div.innerHTML = "<p style='text-align:center; color:gray;'>No hay comunicados activos.</p>"; return; }
-        
         const keys = Object.keys(d).reverse();
         keys.forEach(id => {
             div.innerHTML += `
@@ -346,4 +338,19 @@
     });
 
     db.ref('tareas').on('value', s => {
-        const d = s.val(); const mon = document.getElementById('monitorTallerPublico'); const tall = document.getElementById('tareasT
+        const d = s.val(); const mon = document.getElementById('monitorTallerPublico'); const tall = document.getElementById('tareasTaller'); mon.innerHTML = ""; tall.innerHTML = "";
+        for(let id in d) {
+            const t = d[id];
+            if(t.estado !== 'Listo') mon.innerHTML += `<div style="padding:5px; border-bottom:1px solid #eee;">Coche ${t.interno}: ${t.desc}</div>`;
+            tall.innerHTML += `<div class="card"><b>Coche ${t.interno}</b>: ${t.desc} ${t.foto ? `<img src="${t.foto}" class="img-preview" onclick="abrirVisor(this.src)">` : ''} <button class="btn-green" onclick="db.ref('tareas/${id}').update({estado:'Listo'})">LISTO</button> <button class="btn-red" onclick="if(prompt('Clave:')=='0987') db.ref('tareas/${id}').remove()">BORRAR</button></div>`;
+        }
+        db.ref('auxilios').once('value', sax => {
+            const dax = sax.val();
+            for(let id in dax) tall.innerHTML += `<div class="card" style="border-left: 10px solid red;"><b>🆘 AUXILIO COCHE ${dax[id].interno}</b><p>${dax[id].desc}</p><button class="btn-red" onclick="db.ref('auxilios/${id}').remove()">FINALIZAR AUXILIO</button></div>`;
+        });
+    });
+
+    db.ref('planillas').on('value', s => { const d = s.val(); document.getElementById('verPlanillaHoy').innerHTML = d ? `<img src="${d.foto}" class="img-preview" onclick="abrirVisor(this.src)">` : "Sin planilla"; });
+</script>
+</body>
+</html>
